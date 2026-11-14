@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>개발 보드</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1 id="title">개발 보드</h1>
+      <span id="source" class="src"></span>
+    </div>
+    <div class="actions">
+      <button id="btnChanges" class="btn" type="button">변경 기록</button>
+      <button id="btnSave" class="btn primary" type="button" disabled>저장</button>
+      <button id="btnSettings" class="btn" type="button">설정</button>
+    </div>
+  </header>
+
+  <div class="bar">
+    <nav id="tabs" class="tabs" aria-label="보드"></nav>
+    <div id="progress" class="progress">
+      <div class="pbar" aria-hidden="true"><i class="done"></i><i class="doing"></i><i class="proto"></i></div>
+      <span id="progressText"></span>
+    </div>
+    <div id="filters" class="filters" role="group" aria-label="필터">
+      <button class="chip" type="button" data-filter="all" aria-pressed="true">전체</button>
+      <button class="chip" type="button" data-filter="todo" aria-pressed="false">예정</button>
+      <button class="chip" type="button" data-filter="proto" aria-pressed="false">프로토타입</button>
+      <button class="chip" type="button" data-filter="doing" aria-pressed="false">진행 중</button>
+      <button class="chip" type="button" data-filter="done" aria-pressed="false">완료</button>
+      <button class="chip" type="button" data-filter="demo" aria-pressed="false">시연</button>
+    </div>
+  </div>
+
+  <div class="work">
+    <main id="canvas" class="canvas"><p class="empty">불러오는 중…</p></main>
+    <aside id="panel" class="panel" hidden></aside>
+  </div>
+
+  <dialog id="settings">
+    <form id="settingsForm" method="dialog">
+      <h2>설정</h2>
+      <label>표시 이름
+        <input name="name" autocomplete="off" placeholder="변경 기록에 남는 이름">
+      </label>
+      <label>GitHub 토큰
+        <input name="token" type="password" autocomplete="off" placeholder="github_pat_…">
+      </label>
+      <p class="help">
+        저장하려면 이 저장소에 쓰기 권한이 있는 토큰이 필요합니다.
+        <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained 토큰 만들기</a>에서
+        이 저장소만 선택하고 <b>Contents: Read and write</b> 권한을 주세요.
+        토큰은 이 브라우저에만 저장됩니다. 토큰 없이도 보기는 가능합니다.
+      </p>
+      <details>
+        <summary>저장소 정보</summary>
+        <div class="grid2">
+          <label>owner <input name="owner" autocomplete="off"></label>
+          <label>repo <input name="repo" autocomplete="off"></label>
+          <label>branch <input name="branch" autocomplete="off"></label>
+          <label>path <input name="path" autocomplete="off"></label>
+        </div>
+      </details>
+      <div class="dlg-actions">
+        <button class="btn" type="button" id="btnExport">JSON 내려받기</button>
+        <span class="grow"></span>
+        <button class="btn" type="button" id="btnSettingsCancel">취소</button>
+        <button class="btn primary" type="submit">확인</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
