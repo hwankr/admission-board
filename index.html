@@ -51,10 +51,14 @@
         <input name="token" type="password" autocomplete="off" placeholder="github_pat_…">
       </label>
       <p class="help">
-        저장하려면 이 저장소에 쓰기 권한이 있는 토큰이 필요합니다.
-        <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained 토큰 만들기</a>에서
-        이 저장소만 선택하고 <b>Contents: Read and write</b> 권한을 주세요.
-        토큰은 이 브라우저에만 저장됩니다. 토큰 없이도 보기는 가능합니다.
+        보기는 토큰 없이 됩니다. 저장하려면 이 저장소에 쓰기 권한이 있는 GitHub 토큰이 필요합니다.<br>
+        <b>팀원</b>: 저장소 주인에게 협업자(Collaborator)로 초대받은 뒤
+        <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=admission-board" target="_blank" rel="noopener">토큰 만들기(classic)</a>에서
+        <b>public_repo</b>만 체크해 만드세요.<br>
+        <b>저장소 주인</b>: 위 방법 또는
+        <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained 토큰</a>으로
+        이 저장소의 <b>Contents: Read and write</b>만 줘도 됩니다.<br>
+        토큰은 이 브라우저에만 저장됩니다.
       </p>
       <details>
         <summary>저장소 정보</summary>
