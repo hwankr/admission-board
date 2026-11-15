@@ -45,6 +45,11 @@ body {
   font: 14px/1.45 "Pretendard Variable", Pretendard, system-ui, -apple-system, "Malgun Gothic", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+/* 줄을 순서에 맡기지 않고 못 박는다. 확장 프로그램이 body에 요소를 끼워 넣으면
+   탭 바가 남는 공간 줄(높이 0)로 밀려 캔버스 밑에 깔린다. */
+body > .top { grid-row: 1; }
+body > .bar { grid-row: 2; }
+body > .work { grid-row: 3; }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: inherit; text-underline-offset: 2px; }
