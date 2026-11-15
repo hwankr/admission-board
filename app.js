@@ -223,7 +223,6 @@
     const d = state.local;
     document.title = d.title;
     $('#title').textContent = d.title;
-    $('#source').textContent = state.source === 'online' ? '누구나 편집할 수 있습니다 · 저장하면 모두에게 반영' : '연결 안 됨 · 예전 저장본을 보여 주는 중';
 
     const n = changes().length;
     const save = $('#btnSave');
@@ -232,10 +231,7 @@
     shownCount = n;
 
     const b = board();
-    $('#tabs').innerHTML = d.boards.map((x) => {
-      const t = tally(x.children);
-      return `<button class="tab" role="tab" aria-selected="${x.id === b.id}" data-board="${esc(x.id)}">${esc(x.title)}<small>${t.done}/${t.total}</small></button>`;
-    }).join('') + `<button class="tab-edit" data-board-edit title="이 보드의 이름·시작·끝 수정">보드 설정</button>`;
+    renderTabs(d.boards, b);
 
     const t = tally(b.children);
     const pct = (v) => (t.total ? (v / t.total) * 100 : 0);
@@ -245,6 +241,27 @@
     $('#progress .proto').style.width = `${pct(t.proto)}%`;
     $('#progressText').innerHTML = `완료 <b>${t.done}</b> · 진행 중 <b>${t.doing}</b> · 프로토타입 <b>${t.proto}</b> · 전체 <b>${t.total}</b>`;
     for (const c of document.querySelectorAll('#filters .chip')) c.setAttribute('aria-pressed', c.dataset.filter === state.filter);
+  }
+
+  // 탭은 보드 목록이 바뀔 때만 새로 만들고, 평소에는 글자와 선택 상태만 바꾼다.
+  // 매번 innerHTML로 갈아엎으면 누른 버튼이 사라져 포커스·호버가 끊긴다.
+  function renderTabs(boards, b) {
+    const nav = $('#tabs');
+    const ids = boards.map((x) => x.id).join('\n');
+    if (nav.dataset.ids !== ids) {
+      nav.dataset.ids = ids;
+      nav.innerHTML = boards.map((x) => `<button class="tab" role="tab" data-board="${esc(x.id)}"><span class="tab-t"></span><small></small></button>`).join('')
+        + `<button class="tab-edit" data-board-edit>보드 설정</button>`;
+    }
+    const tabs = nav.querySelectorAll('.tab');
+    boards.forEach((x, i) => {
+      const el = tabs[i], t = tally(x.children), on = x.id === b.id;
+      el.querySelector('.tab-t').textContent = x.title || '(이름 없음)';
+      el.querySelector('small').textContent = `${t.done}/${t.total}`;
+      el.setAttribute('aria-selected', on);
+      el.tabIndex = on ? 0 : -1;
+    });
+    $('[data-board-edit]', nav).setAttribute('aria-pressed', state.panel === 'node' && state.selId === b.id);
   }
 
   let shownCount = 0;
@@ -268,7 +285,7 @@
     const selCls = (n) => (n.id === state.selId && state.panel === 'node' ? ' sel' : '');
     const dot = (n) => {
       const s = statusOf(n), auto = n.children.length > 0;
-      return `<button class="st st-${s}" data-st="${esc(n.id)}"${auto ? ' disabled' : ''} title="${auto ? `하위 항목 기준: ${STATUS[s]}` : `${STATUS[s]} · 눌러서 ${STATUS[NEXT[s]]}(으)로`}" aria-label="상태 ${STATUS[s]}"></button>`;
+      return `<button class="st st-${s}" data-st="${esc(n.id)}"${auto ? ' disabled' : ''} aria-label="상태 ${STATUS[s]}"></button>`;
     };
     const demo = '<span class="tag">시연</span>';
     const protoTag = '<span class="proto-tag">프로토타입</span>';
@@ -330,15 +347,15 @@
     showPanel(el, `<div class="p-head"><div class="crumb">${esc(e.path.join(' › ') || '보드')}</div><button class="x" data-close aria-label="닫기">✕</button></div>
       ${field('title', '이름')}
       ${isBoard
-        ? `${field('start', '시작 표시', 'textarea', 'rows="2" placeholder="비우면 표시 안 함"')}${field('end', '끝 표시', 'textarea', 'rows="2" placeholder="비우면 표시 안 함"')}
-           <label class="check"><input type="checkbox" data-f="flow"${n.flow ? ' checked' : ''}>순서가 있는 흐름 (화살표로 표시)</label>`
+        ? `${field('start', '시작 표시', 'textarea', 'rows="2"')}${field('end', '끝 표시', 'textarea', 'rows="2"')}
+           <label class="check"><input type="checkbox" data-f="flow"${n.flow ? ' checked' : ''}>순서가 있는 흐름</label>`
         : `${field('desc', '설명', 'textarea', 'rows="3"')}
            <div class="field">상태${auto
              ? `<div class="auto">${STATUS[statusOf(n)]} · 하위 ${tally(n.children).done}/${tally(n.children).total} 완료 (자동)</div>`
              : `<div class="seg" role="radiogroup">${Object.entries(STATUS).map(([k, v]) => `<button type="button" role="radio" data-status="${k}" aria-checked="${n.status === k}">${v}</button>`).join('')}</div>`}
            </div>
-           <label class="check"><input type="checkbox" data-f="demo"${n.demo ? ' checked' : ''}>영상 시연 항목 (빨간 박스)</label>
-           ${field('note', '메모', 'textarea', 'rows="3" placeholder="개발 비고, PR 링크, 팀에 알릴 내용"')}
+           <label class="check"><input type="checkbox" data-f="demo"${n.demo ? ' checked' : ''}>영상 시연 항목</label>
+           ${field('note', '메모', 'textarea', 'rows="3"')}
            <div class="sep"></div>
            <div class="row">
              <button class="btn small" data-act="up"${i === 0 ? ' disabled' : ''}>앞으로</button>
@@ -491,7 +508,7 @@
     if (state.panel === 'changes') renderPanel();
   }
   async function restore(id) {
-    if (!confirm('이 판의 내용을 불러올까요? 불러온 뒤 "저장"을 눌러야 모두에게 반영됩니다.')) return;
+    if (!confirm('이 판의 내용을 불러올까요?')) return;
     try {
       const [row] = await rows(`?select=data&id=eq.${Number(id)}`);
       if (!row) throw new Error('그 판을 찾을 수 없습니다.');
@@ -499,7 +516,7 @@
       old.log = state.local.log; // 기록은 지금 것을 이어 간다
       state.local = old; state.selId = null;
       commit();
-      toast('불러왔습니다. 확인한 뒤 저장하세요.');
+      toast('불러왔습니다.');
     } catch (err) { toast(err.message, true); }
   }
 
@@ -540,7 +557,20 @@
       $('#canvas').scrollTo(0, 0);
       return render();
     }
-    if (ev.target.closest('[data-board-edit]')) select(board().id);
+    if (ev.target.closest('[data-board-edit]')) {
+      // 이미 이 보드 설정이 열려 있으면 닫는다.
+      if (state.panel === 'node' && state.selId === board().id) closePanel(); else select(board().id);
+    }
+  });
+  // 탭 목록 안에서는 ←/→ 로 보드를 옮겨 다닌다.
+  $('#tabs').addEventListener('keydown', (ev) => {
+    if (!ev.target.matches('.tab') || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) return;
+    const tabs = [...$('#tabs').querySelectorAll('.tab')];
+    const i = tabs.indexOf(ev.target), n = tabs.length;
+    const j = ev.key === 'Home' ? 0 : ev.key === 'End' ? n - 1 : (i + (ev.key === 'ArrowRight' ? 1 : -1) + n) % n;
+    ev.preventDefault();
+    tabs[j].click();
+    tabs[j].focus();
   });
   $('#filters').addEventListener('click', (ev) => {
     const c = ev.target.closest('[data-filter]');

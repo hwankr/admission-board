@@ -57,7 +57,6 @@ a { color: inherit; text-underline-offset: 2px; }
 }
 .brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-right: auto; min-width: 0; }
 .brand h1 { margin: 0; font-size: 18px; font-weight: 750; letter-spacing: -.02em; }
-.src { font-size: 12px; color: var(--muted); }
 .actions { display: flex; gap: 8px; }
 
 .btn {
@@ -96,7 +95,8 @@ a { color: inherit; text-underline-offset: 2px; }
 .tab:hover { color: var(--ink); }
 .tab[aria-selected="true"] { background: var(--head); color: var(--ink); }
 .tab-edit { border: 0; background: none; color: var(--faint); font-size: 12px; padding: 4px 6px; border-radius: 6px; transition: color .15s; }
-.tab-edit:hover { color: var(--ink); }
+.tab-edit:hover, .tab-edit[aria-pressed="true"] { color: var(--ink); }
+.tab-edit[aria-pressed="true"] { background: var(--head); }
 
 .progress { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
 .pbar { display: flex; width: 160px; height: 6px; border-radius: 3px; overflow: hidden; background: var(--head); }
@@ -327,7 +327,6 @@ dialog {
 dialog[open] { animation: dialog-in .22s var(--ease); }
 dialog::backdrop { background: rgba(0, 0, 0, .4); animation: fade .2s; }
 dialog h2 { margin: 0 0 16px; font-size: 16px; }
-.help { margin: -4px 0 14px; font-size: 12px; color: var(--muted); }
 details { margin-bottom: 16px; font-size: 13px; }
 summary { cursor: pointer; color: var(--muted); margin-bottom: 10px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }

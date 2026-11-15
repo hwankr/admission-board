@@ -11,7 +11,6 @@
   <header class="top">
     <div class="brand">
       <h1 id="title">개발 보드</h1>
-      <span id="source" class="src"></span>
     </div>
     <div class="actions">
       <button id="btnChanges" class="btn" type="button">변경 기록</button>
@@ -21,7 +20,7 @@
   </header>
 
   <div class="bar">
-    <nav id="tabs" class="tabs" aria-label="보드"></nav>
+    <nav id="tabs" class="tabs" role="tablist" aria-label="보드"></nav>
     <div id="progress" class="progress">
       <div class="pbar" aria-hidden="true"><i class="done"></i><i class="doing"></i><i class="proto"></i></div>
       <span id="progressText"></span>
@@ -45,12 +44,8 @@
     <form id="settingsForm" method="dialog">
       <h2>설정</h2>
       <label>표시 이름
-        <input name="name" autocomplete="off" maxlength="40" placeholder="비워 두면 익명">
+        <input name="name" autocomplete="off" maxlength="40">
       </label>
-      <p class="help">
-        이 보드는 누구나 편집하고 저장할 수 있습니다. 이름을 적어 두면 변경 기록에 함께 남습니다.
-        잘못 저장된 내용은 "변경 기록"의 이전 판에서 되돌릴 수 있습니다.
-      </p>
       <div class="dlg-actions">
         <button class="btn" type="button" id="btnExport">JSON 내려받기</button>
         <span class="grow"></span>
