@@ -155,50 +155,45 @@
     return m;
   }
 
-  // ── 설정 · 저장소 ─────────────────────────────────────────
-  function siteDefaults() {
-    const d = { owner: '', repo: '', branch: 'main', path: 'data.json' };
-    const m = location.hostname.match(/^([^.]+)\.github\.io$/);
-    if (m) {
-      const seg = location.pathname.split('/').filter(Boolean)[0];
-      d.owner = m[1];
-      d.repo = seg && !seg.includes('.') ? seg : location.hostname;
-    }
-    for (const [k, v] of Object.entries(window.BOARD_CONFIG || {})) if (v) d[k] = v;
-    return d;
-  }
+  // ── 저장소 (Supabase) ─────────────────────────────────────
+  // 보드는 board_versions 표에 "판"으로 쌓인다. 가장 큰 id가 현재 보드이고,
+  // 저장은 최신 판을 parent_id로 지정한 새 줄을 추가하는 것이다. 누구나 읽고 추가할 수 있다.
   function readStore(key) { try { return JSON.parse(localStorage.getItem(key)) || null; } catch { return null; } }
   function writeStore(key, val) { try { val == null ? localStorage.removeItem(key) : localStorage.setItem(key, JSON.stringify(val)); } catch { /* 저장소를 못 쓰는 환경 */ } }
 
-  const defaults = siteDefaults();
-  let cfg = { name: '', token: '', ...defaults, ...(readStore(CFG_KEY) || {}) };
+  const conf = window.BOARD_CONFIG || {};
+  const online = !!(conf.supabaseUrl && conf.supabaseKey);
+  const cfg = { name: (readStore(CFG_KEY) || {}).name || '' };
+  writeStore(CFG_KEY, cfg.name ? { name: cfg.name } : null); // 예전 버전이 넣어 둔 토큰 등은 지운다
 
-  function ghFetch(method, body) {
-    const path = cfg.path.split('/').map(encodeURIComponent).join('/');
-    let url = `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${path}`;
-    if (method === 'GET') url += `?ref=${encodeURIComponent(cfg.branch)}`;
-    const headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
-    if (cfg.token) headers.Authorization = `Bearer ${cfg.token}`;
-    return fetch(url, { method, headers, cache: 'no-store', body: body ? JSON.stringify(body) : undefined });
+  function api(method, query, body) {
+    return fetch(`${conf.supabaseUrl}/rest/v1/board_versions${query}`, {
+      method,
+      cache: 'no-store',
+      headers: { apikey: conf.supabaseKey, 'Content-Type': 'application/json', ...(method === 'POST' ? { Prefer: 'return=representation' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
   }
-  const decode = (b64) => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), (c) => c.charCodeAt(0))));
-  const encode = (text) => {
-    const bytes = new TextEncoder().encode(text);
-    let bin = '';
-    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-    return btoa(bin);
-  };
+  async function rows(query) {
+    const r = await api('GET', query);
+    if (!r.ok) throw new Error(`보드를 불러오지 못했습니다 (${r.status}).`);
+    return r.json();
+  }
+  async function latest() {
+    const [row] = await rows('?select=id,data&order=id.desc&limit=1');
+    return row ? { version: row.id, data: normalize(row.data) } : null;
+  }
 
   async function fetchRemote() {
-    if (cfg.owner && cfg.repo) {
+    if (online) {
       try {
-        const r = await ghFetch('GET');
-        if (r.ok) return { data: normalize(decode((await r.json()).content)), source: 'github' };
-      } catch { /* 아래 정적 파일로 */ }
+        const cur = await latest();
+        if (cur) return { ...cur, source: 'online' };
+      } catch { /* 아래 저장본으로 */ }
     }
     const r = await fetch('data.json', { cache: 'no-store' });
-    if (!r.ok) throw new Error('data.json을 불러오지 못했습니다.');
-    return { data: normalize(await r.json()), source: 'static' };
+    if (!r.ok) throw new Error('보드를 불러오지 못했습니다.');
+    return { data: normalize(await r.json()), version: null, source: 'static' };
   }
 
   // ── 상태 ──────────────────────────────────────────────────
@@ -228,7 +223,7 @@
     const d = state.local;
     document.title = d.title;
     $('#title').textContent = d.title;
-    $('#source').textContent = state.source === 'github' ? `${cfg.owner}/${cfg.repo}` : '저장소 미연결 · 이 브라우저에서만 편집됨';
+    $('#source').textContent = state.source === 'online' ? '누구나 편집할 수 있습니다 · 저장하면 모두에게 반영' : '연결 안 됨 · 예전 저장본을 보여 주는 중';
 
     const n = changes().length;
     const save = $('#btnSave');
@@ -366,7 +361,18 @@
         <div class="row"><button class="btn small primary" data-act="save">저장</button><button class="btn small danger" data-act="discard">모두 되돌리기</button></div>`
         : '<p class="none">저장할 변경이 없습니다.</p>'}
       <h3>저장된 기록</h3>
-      ${log.length ? `<ul class="list">${log.map((l) => `<li><time>${when(l.at)}</time><span class="by">${esc(l.by || '익명')}</span>${esc(l.text)}</li>`).join('')}</ul>` : '<p class="none">아직 기록이 없습니다.</p>'}`);
+      ${log.length ? `<ul class="list">${log.map((l) => `<li><time>${when(l.at)}</time><span class="by">${esc(l.by || '익명')}</span>${esc(l.text)}</li>`).join('')}</ul>` : '<p class="none">아직 기록이 없습니다.</p>'}
+      ${online ? `<h3>이전 판으로 되돌리기</h3>${versionList()}` : ''}`);
+    if (online && !state.versions && !state.loadingVersions) {
+      state.loadingVersions = true;
+      loadVersions().finally(() => { state.loadingVersions = false; });
+    }
+  }
+  function versionList() {
+    if (!state.versions) return '<p class="none">불러오는 중…</p>';
+    if (!state.versions.length) return '<p class="none">저장된 판이 없습니다.</p>';
+    return `<ul class="list">${state.versions.map((v) => `<li class="ver"><div><time>${when(v.created_at)}</time><span class="by">${esc(v.author || '익명')}</span>${esc(v.summary || '(요약 없음)')}</div>${
+      v.id === state.version ? '<span class="now">현재</span>' : `<button class="btn small" data-restore="${v.id}">불러오기</button>`}</li>`).join('')}</ul>`;
   }
 
   let toastTimer;
@@ -421,29 +427,27 @@
   async function save() {
     const ch = changes();
     if (!ch.length || state.saving) return;
-    if (!cfg.owner || !cfg.repo) { toast('저장할 GitHub 저장소가 설정되지 않았습니다. 설정 › 저장소 정보를 확인하세요.', true); return openSettings(); }
-    if (!cfg.token) { toast('저장하려면 GitHub 토큰이 필요합니다.', true); return openSettings(); }
+    if (!online) return toast('저장할 곳이 연결되지 않았습니다. config.js를 확인하세요.', true);
     state.saving = true; renderTop();
     try {
       for (let attempt = 0; ; attempt++) {
-        const r = await ghFetch('GET');
-        if (r.status === 401) throw new Error('토큰이 유효하지 않습니다. 설정에서 다시 입력하세요.');
-        if (!r.ok && r.status !== 404) throw new Error(`저장소를 읽지 못했습니다 (${r.status}).`);
-        const cur = r.ok ? await r.json() : null;
-        const remote = cur ? normalize(decode(cur.content)) : state.base;
+        const cur = await latest();
+        const remote = cur ? cur.data : state.base;
         const merged = normalize(same(remote, state.base) ? state.local : rebase(state.base, state.local, remote));
         const at = new Date().toISOString();
         merged.log = [...ch.map((c) => ({ at, by: cfg.name || '', text: c.text })), ...remote.log].slice(0, LOG_LIMIT);
-        const put = await ghFetch('PUT', {
-          message: `board: ${ch[0].text}${ch.length > 1 ? ` 외 ${ch.length - 1}건` : ''}${cfg.name ? ` (${cfg.name})` : ''}`,
-          content: encode(JSON.stringify(merged, null, 2) + '\n'),
-          branch: cfg.branch,
-          ...(cur ? { sha: cur.sha } : {}),
+        const r = await api('POST', '?select=id', {
+          parent_id: cur ? cur.version : null,
+          data: merged,
+          author: cfg.name.slice(0, 40),
+          summary: `${ch[0].text}${ch.length > 1 ? ` 외 ${ch.length - 1}건` : ''}`.slice(0, 300),
         });
-        if (put.status === 409 && attempt < 3) continue; // 방금 다른 사람이 저장함 → 다시 합쳐서 시도
-        if (put.status === 403 || put.status === 404) throw new Error('이 저장소에 쓸 권한이 없습니다. 토큰의 Contents 쓰기 권한을 확인하세요.');
-        if (!put.ok) throw new Error(`저장에 실패했습니다 (${put.status}).`);
-        state.base = merged; state.local = clone(merged); state.source = 'github'; state.loadedAt = Date.now();
+        if (r.status === 409 && attempt < 4) continue; // 방금 다른 사람이 저장함 → 최신 판에 다시 합쳐서 시도
+        if (r.status === 429) throw new Error('지금 저장이 몰리고 있습니다. 1분쯤 뒤에 다시 시도하세요.');
+        if (!r.ok) throw new Error(`저장에 실패했습니다 (${r.status}).`);
+        state.version = (await r.json())[0].id;
+        state.base = merged; state.local = clone(merged); state.source = 'online'; state.loadedAt = Date.now();
+        state.versions = null;
         persist();
         toast(`${ch.length}건 저장했습니다.`);
         break;
@@ -455,34 +459,58 @@
     }
   }
 
-  async function refresh(quiet) {
+  // 다른 사람이 저장한 내용을 가져온다. 연결이 안 되면 지금 화면을 그대로 둔다.
+  async function refresh() {
+    if (!online || state.saving) return;
     try {
-      const remote = await fetchRemote();
-      state.source = remote.source; state.loadedAt = Date.now();
-      if (same(remote.data, state.base)) return renderTop();
-      adopt(remote.data);
-      render();
-      if (!quiet) toast('다른 사람이 저장한 최신 내용을 반영했습니다.');
+      const cur = await latest();
+      state.loadedAt = Date.now();
+      if (!cur || state.saving) return;
+      state.version = cur.version; state.source = 'online'; state.versions = null;
+      if (same(cur.data, state.base)) return renderTop();
+      adopt(cur.data);
+      // 패널에 글을 쓰는 중이면 입력이 끊기지 않게 패널은 그대로 둔다.
+      const typing = $('#panel').contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+      if (typing && state.panel === 'node') { renderTop(); renderCanvas(); } else render();
+      toast('다른 사람이 저장한 최신 내용을 반영했습니다.');
     } catch { /* 다음 기회에 */ }
+  }
+  async function poll() {
+    if (!online || document.hidden || state.saving || !state.base) return;
+    try {
+      const [row] = await rows('?select=id&order=id.desc&limit=1');
+      if (row && row.id !== state.version) refresh();
+    } catch { /* 다음 기회에 */ }
+  }
+
+  // ── 이전 판 ───────────────────────────────────────────────
+  async function loadVersions() {
+    try {
+      state.versions = await rows('?select=id,author,summary,created_at&order=id.desc&limit=30');
+    } catch { state.versions = []; toast('이전 판 목록을 불러오지 못했습니다.', true); }
+    if (state.panel === 'changes') renderPanel();
+  }
+  async function restore(id) {
+    if (!confirm('이 판의 내용을 불러올까요? 불러온 뒤 "저장"을 눌러야 모두에게 반영됩니다.')) return;
+    try {
+      const [row] = await rows(`?select=data&id=eq.${Number(id)}`);
+      if (!row) throw new Error('그 판을 찾을 수 없습니다.');
+      const old = normalize(row.data);
+      old.log = state.local.log; // 기록은 지금 것을 이어 간다
+      state.local = old; state.selId = null;
+      commit();
+      toast('불러왔습니다. 확인한 뒤 저장하세요.');
+    } catch (err) { toast(err.message, true); }
   }
 
   // ── 설정 창 ───────────────────────────────────────────────
   function openSettings() {
-    const f = $('#settingsForm');
-    for (const k of ['name', 'token', 'owner', 'repo', 'branch', 'path']) f.elements[k].value = cfg[k] || '';
+    $('#settingsForm').elements.name.value = cfg.name;
     $('#settings').showModal();
   }
   function applySettings() {
-    const f = $('#settingsForm');
-    const next = {};
-    for (const k of ['name', 'token', 'owner', 'repo', 'branch', 'path']) {
-      const v = f.elements[k].value.trim();
-      if (k === 'name' || k === 'token' ? v : v && v !== defaults[k]) next[k] = v;
-    }
-    const repoChanged = ['owner', 'repo', 'branch', 'path', 'token'].some((k) => (next[k] ?? defaults[k] ?? '') !== cfg[k]);
-    writeStore(CFG_KEY, Object.keys(next).length ? next : null);
-    cfg = { name: '', token: '', ...defaults, ...next };
-    if (repoChanged) refresh(true); else renderTop();
+    cfg.name = $('#settingsForm').elements.name.value.trim().slice(0, 40);
+    writeStore(CFG_KEY, cfg.name ? { name: cfg.name } : null);
   }
 
   // ── 이벤트 ────────────────────────────────────────────────
@@ -545,6 +573,8 @@
       if (n && n.status !== s.dataset.status) { n.status = s.dataset.status; touch(n); state.flash = { id: n.id, kind: 'flash' }; commit(); }
       return;
     }
+    const v = ev.target.closest('[data-restore]');
+    if (v) return restore(v.dataset.restore);
     const a = ev.target.closest('[data-act]');
     if (a) act(a.dataset.act);
   });
@@ -567,14 +597,15 @@
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') { ev.preventDefault(); save(); }
   });
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && state.base && !state.saving && Date.now() - state.loadedAt > 90_000) refresh();
+    if (!document.hidden && state.base && Date.now() - state.loadedAt > 15_000) refresh();
   });
+  setInterval(poll, 30_000);
 
   // ── 시작 ──────────────────────────────────────────────────
   (async () => {
     try {
       const remote = await fetchRemote();
-      state.source = remote.source; state.loadedAt = Date.now();
+      state.source = remote.source; state.version = remote.version; state.loadedAt = Date.now();
       const draft = readStore(DRAFT_KEY);
       if (draft?.base && draft?.local) { state.base = normalize(draft.base); state.local = normalize(draft.local); }
       adopt(remote.data);

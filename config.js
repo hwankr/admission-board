@@ -1,9 +1,7 @@
-// 보드 데이터(data.json)가 들어 있는 GitHub 저장소.
-// https://<owner>.github.io/<repo>/ 로 배포하면 owner·repo는 주소에서 자동으로 잡히므로 비워 둬도 됩니다.
-// path는 저장소 루트 기준 경로입니다. (예: 저장소의 docs 폴더를 배포한다면 'docs/data.json')
+// 보드 데이터가 저장되는 Supabase 프로젝트.
+// supabaseKey는 브라우저에 공개하도록 만들어진 키(publishable)다. 누가 무엇을 할 수 있는지는
+// 키가 아니라 표의 권한 규칙이 정한다: board_versions 표는 누구나 읽기·추가만 가능, 수정·삭제 불가.
 window.BOARD_CONFIG = {
-  owner: '',
-  repo: '',
-  branch: 'main',
-  path: 'data.json',
+  supabaseUrl: 'https://mcvycwlnalhwuivubzni.supabase.co',
+  supabaseKey: 'sb_publishable_sFAO1fNuElQLjSFwDmDEEA_zWi1rndM',
 };

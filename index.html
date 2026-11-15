@@ -45,30 +45,12 @@
     <form id="settingsForm" method="dialog">
       <h2>설정</h2>
       <label>표시 이름
-        <input name="name" autocomplete="off" placeholder="변경 기록에 남는 이름">
-      </label>
-      <label>GitHub 토큰
-        <input name="token" type="password" autocomplete="off" placeholder="github_pat_…">
+        <input name="name" autocomplete="off" maxlength="40" placeholder="비워 두면 익명">
       </label>
       <p class="help">
-        보기는 토큰 없이 됩니다. 저장하려면 이 저장소에 쓰기 권한이 있는 GitHub 토큰이 필요합니다.<br>
-        <b>팀원</b>: 저장소 주인에게 협업자(Collaborator)로 초대받은 뒤
-        <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=admission-board" target="_blank" rel="noopener">토큰 만들기(classic)</a>에서
-        <b>public_repo</b>만 체크해 만드세요.<br>
-        <b>저장소 주인</b>: 위 방법 또는
-        <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained 토큰</a>으로
-        이 저장소의 <b>Contents: Read and write</b>만 줘도 됩니다.<br>
-        토큰은 이 브라우저에만 저장됩니다.
+        이 보드는 누구나 편집하고 저장할 수 있습니다. 이름을 적어 두면 변경 기록에 함께 남습니다.
+        잘못 저장된 내용은 "변경 기록"의 이전 판에서 되돌릴 수 있습니다.
       </p>
-      <details>
-        <summary>저장소 정보</summary>
-        <div class="grid2">
-          <label>owner <input name="owner" autocomplete="off"></label>
-          <label>repo <input name="repo" autocomplete="off"></label>
-          <label>branch <input name="branch" autocomplete="off"></label>
-          <label>path <input name="path" autocomplete="off"></label>
-        </div>
-      </details>
       <div class="dlg-actions">
         <button class="btn" type="button" id="btnExport">JSON 내려받기</button>
         <span class="grow"></span>
